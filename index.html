@@ -5,126 +5,150 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 <title>East Asian Calendrical Calculator (NASA SPICE)</title>
 
-<!-- TimeCraftJS/CSPI CE asm.js (you uploaded asm_full.js) -->
+<!-- NASA AMMOS/TimeCraftJS asm.js engine (local file in repo) -->
 <script src="asm_full.js"></script>
 
 <style>
   :root{
     --bg:#0b1020;
-    --card:#121833;
-    --muted:#a9b0c7;
-    --text:#e6e8ef;
-    --line:#232b4a;
-    --btn:#3b82f6;
-    --btn2:#22c55e;
+    --card:#101833;
+    --card2:#0e152d;
+    --stroke:rgba(255,255,255,0.07);
+    --text:#e9ecf6;
+    --muted:#aab2cc;
+
+    --accent:#6ea8ff;
+    --accent2:#22c55e;
+
     --warn:#fbbf24;
     --danger:#fb7185;
+
+    --shadow: 0 12px 30px rgba(0,0,0,0.35);
+    --radius: 18px;
   }
+
+  *{box-sizing:border-box}
   body{
     margin:0;
-    background:var(--bg);
+    background: radial-gradient(1200px 600px at 30% -10%, rgba(110,168,255,0.18), transparent 55%),
+                radial-gradient(900px 500px at 90% 10%, rgba(34,197,94,0.10), transparent 60%),
+                var(--bg);
     color:var(--text);
-    font-family:system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;
+    font-family: system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;
     padding:18px;
-    padding-bottom:120px;
+    padding-bottom:140px;
   }
-  a{color:#8ab4ff}
-  .title{
-    font-weight:800;
-    font-size:20px;
-    margin:4px 0 14px;
-    letter-spacing:-0.2px;
+
+  .wrap{max-width:860px; margin:0 auto;}
+  .topbar{
+    display:flex; align-items:center; justify-content:space-between;
+    gap:12px; margin:6px 0 14px;
   }
-  .subtitle{
+  .brand{
+    display:flex; flex-direction:column; gap:3px;
+  }
+  .brand .title{
+    font-weight:900; letter-spacing:-0.3px; font-size:18px;
+  }
+  .brand .sub{
+    color:var(--muted); font-size:12px; line-height:1.35;
+  }
+  .chip{
+    display:inline-flex; align-items:center; gap:8px;
+    padding:8px 10px;
+    border:1px solid var(--stroke);
+    background:rgba(255,255,255,0.03);
+    border-radius:999px;
     color:var(--muted);
-    font-size:13px;
-    margin-top:-8px;
-    margin-bottom:14px;
-    line-height:1.35;
+    font-size:12px;
+    white-space:nowrap;
   }
+  .dot{width:8px; height:8px; border-radius:999px; background:var(--warn);}
+  .dot.ok{background:var(--accent2);}
+  .dot.bad{background:var(--danger);}
+
   .card{
-    background:var(--card);
-    border:1px solid rgba(255,255,255,0.05);
-    border-radius:14px;
+    background: linear-gradient(180deg, rgba(255,255,255,0.03), rgba(255,255,255,0.00));
+    border: 1px solid var(--stroke);
+    border-radius: var(--radius);
+    box-shadow: var(--shadow);
     padding:14px;
     margin-bottom:12px;
-    box-shadow:0 10px 24px rgba(0,0,0,0.25);
   }
-  .row{display:grid; gap:10px}
-  .grid2{display:grid; grid-template-columns:1fr 1fr; gap:10px}
-  @media (max-width:420px){ .grid2{grid-template-columns:1fr} }
+
+  .sectionTitle{
+    display:flex; align-items:center; justify-content:space-between;
+    gap:10px; margin-bottom:10px;
+  }
+  .sectionTitle h2{
+    margin:0; font-size:14px; letter-spacing:-0.2px;
+  }
+  .sectionTitle .hint{
+    color:var(--muted); font-size:12px;
+  }
+
   label{
     display:block;
-    font-size:12px;
     color:var(--muted);
-    margin:2px 0 6px;
+    font-size:12px;
+    margin:8px 0 6px;
   }
+
   input, select, button{
     width:100%;
-    font-size:16px;     /* 모바일 자동 확대 방지 */
-    min-height:44px;    /* 터치 타겟 */
-    padding:10px 12px;
-    border-radius:10px;
-    border:1px solid rgba(255,255,255,0.08);
-    background:#0a0f22;
+    font-size:16px;   /* 모바일 자동 확대 방지 */
+    min-height:46px;  /* 터치 타겟 */
+    padding:12px 12px;
+    border-radius:14px;
+    border:1px solid var(--stroke);
+    background: rgba(10,15,30,0.75);
     color:var(--text);
     outline:none;
-    box-sizing:border-box;
   }
-  button{
+  input::placeholder{color:rgba(170,178,204,0.65)}
+  select{appearance:none;}
+
+  .grid2{
+    display:grid;
+    grid-template-columns:1fr 1fr;
+    gap:10px;
+  }
+  @media (max-width:520px){
+    .grid2{grid-template-columns:1fr;}
+  }
+
+  .btn{
     border:none;
-    font-weight:800;
+    font-weight:900;
     letter-spacing:0.2px;
     cursor:pointer;
   }
-  .btn-primary{background:var(--btn); color:white;}
-  .btn-primary:disabled{opacity:.55; cursor:not-allowed;}
-  .btn-secondary{background:var(--btn2); color:#05210f;}
-  .pill{
-    display:inline-block;
-    padding:6px 10px;
-    border-radius:999px;
-    background:#0a0f22;
-    border:1px solid rgba(255,255,255,0.08);
-    color:var(--muted);
-    font-size:12px;
+  .btn.primary{
+    background: linear-gradient(90deg, rgba(110,168,255,0.95), rgba(110,168,255,0.70));
+    color:#061027;
   }
-  .big{
-    font-size:18px;
-    font-weight:900;
-    margin:10px 0 6px;
+  .btn.primary:disabled{opacity:.55; cursor:not-allowed;}
+  .btn.secondary{
+    background: linear-gradient(90deg, rgba(34,197,94,0.95), rgba(34,197,94,0.75));
+    color:#07190f;
   }
-  .kv{
-    display:grid;
-    grid-template-columns:140px 1fr;
-    gap:8px 12px;
-    font-size:14px;
-    line-height:1.5;
-  }
-  @media (max-width:420px){ .kv{grid-template-columns:120px 1fr;} }
-  .k{color:var(--muted)}
-  .v{color:var(--text); font-weight:700}
-  .muted{color:var(--muted); font-size:12px; line-height:1.45}
-  .warn{
+
+  .note{
     margin-top:10px;
     padding:10px 12px;
-    border-radius:12px;
-    border:1px solid rgba(251,191,36,0.35);
-    background:rgba(251,191,36,0.08);
-    color:#ffe9b0;
-    font-size:13px;
-    line-height:1.4;
+    border-radius:14px;
+    border:1px solid rgba(110,168,255,0.22);
+    background: rgba(110,168,255,0.08);
+    color:#dbe7ff;
+    font-size:12px;
+    line-height:1.45;
   }
-  .danger{
-    border:1px solid rgba(251,113,133,0.35);
-    background:rgba(251,113,133,0.08);
-    color:#ffd0d8;
-  }
+
   .listbox{
     margin-top:8px;
-    border:1px solid rgba(255,255,255,0.08);
-    background:#0a0f22;
-    border-radius:12px;
+    border:1px solid var(--stroke);
+    background: rgba(10,15,30,0.92);
+    border-radius:14px;
     overflow:hidden;
   }
   .item{
@@ -132,527 +156,38 @@
     border-top:1px solid rgba(255,255,255,0.06);
     cursor:pointer;
     font-size:14px;
-    line-height:1.3;
+    line-height:1.35;
   }
   .item:first-child{border-top:none}
-  .item:hover{background:#111a3a}
-  pre{
-    white-space:pre-wrap;
-    word-break:break-word;
-    background:#070b18;
-    border:1px solid rgba(255,255,255,0.06);
-    padding:12px;
-    border-radius:12px;
+  .item:hover{background: rgba(255,255,255,0.05);}
+
+  /* Result “Saju-style” */
+  .resultHeader{
+    display:flex; align-items:flex-start; justify-content:space-between; gap:12px;
+  }
+  .bigline{
+    font-size:18px;
+    font-weight:950;
+    margin:0;
+    letter-spacing:-0.3px;
+  }
+  .smallline{
+    color:var(--muted);
     font-size:12px;
-    color:#dbe1ff;
+    margin-top:4px;
+    line-height:1.35;
   }
-  .fixed-actions{
-    position:fixed;
-    left:50%;
-    transform:translateX(-50%);
-    bottom:12px;
-    width:calc(100% - 36px);
-    max-width:760px;
+  .sajuGrid{
+    margin-top:12px;
     display:grid;
+    grid-template-columns: 1fr 1fr 1fr;
     gap:10px;
-    z-index:20;
   }
-</style>
-</head>
-
-<body>
-  <div class="title">NASA 기반 동아시아 역법 계산기</div>
-  <div class="subtitle">
-    태양의 <b>겉보기 황경(true apparent longitude)</b>으로 절기·월지, 그리고 <b>진태양시</b>로 시주를 계산합니다.
-    (서버 저장 없음 · 브라우저 로컬 계산)
-  </div>
-
-  <div class="card">
-    <div class="row">
-      <div class="grid2">
-        <div>
-          <label>날짜</label>
-          <input id="date" type="date" />
-        </div>
-        <div>
-          <label>시각</label>
-          <input id="time" type="time" step="60" />
-        </div>
-      </div>
-
-      <div class="grid2">
-        <div>
-          <label>입력 시간대</label>
-          <select id="tz">
-            <option value="KST" selected>KST (UTC+9)</option>
-            <option value="UTC">UTC</option>
-          </select>
-        </div>
-        <div>
-          <label>출생지 경도·위도(자동입력)</label>
-          <input id="coord" type="text" placeholder="도시를 검색해 선택하면 자동 입력됩니다" disabled />
-        </div>
-      </div>
-
-      <div>
-        <label>출생지 도시 검색 (예: 제주시, Seoul, Tokyo)</label>
-        <input id="place" placeholder="도시명을 입력하세요" autocomplete="off" />
-        <div id="placeList"></div>
-      </div>
-
-      <div class="muted">
-        ※ 절기/월주는 위치 영향이 작지만, <b>시주(진태양시)</b>는 경도에 민감합니다. 정확도를 위해 도시 선택을 권장합니다.
-      </div>
-    </div>
-  </div>
-
-  <div class="card">
-    <button class="btn-primary" id="calcBtn" onclick="calculate()">NASA 기준으로 계산</button>
-    <div class="muted" id="status" style="margin-top:10px;">커널 로딩 대기 중…</div>
-  </div>
-
-  <div class="card">
-    <div class="big">결과</div>
-    <div class="kv" id="kv"></div>
-    <div id="warnings"></div>
-
-    <div style="margin-top:14px; display:flex; gap:10px; flex-wrap:wrap;">
-      <span class="pill" id="basis1">Frame: ECLIPDATE</span>
-      <span class="pill" id="basis2">Correction: LT+S</span>
-      <span class="pill" id="basis3">Ephemeris: DE440s</span>
-    </div>
-
-    <div style="margin-top:12px;">
-      <div class="muted">연구·보고서용 원문 출력</div>
-      <pre id="raw">계산 전…</pre>
-    </div>
-  </div>
-
-  <div class="fixed-actions">
-    <button class="btn-secondary" id="copyBtn" onclick="copyForGPT()" disabled>GPT용 결과 복사</button>
-    <button class="btn-secondary" id="openBtn" onclick="openInChatGPT()" disabled>ChatGPT에서 구조 해석</button>
-  </div>
-
-<script>
-/** =========================
- *  KERNELS
- *  - de440s.bsp는 GitHub 25MB 제한 때문에 NASA 서버에서 직접 로드
- *  - tls/pck는 로컬 파일(당신이 업로드한 것) 사용
- *  ========================= */
-const DE440 = "https://naif.jpl.nasa.gov/pub/naif/generic_kernels/spk/planets/de440s.bsp";
-const TLS_LOCAL = "naif0012.tls";
-const PCK_LOCAL = "pck00010.tpc";
-
-let kernelsLoaded = false;
-let selectedLocation = null;
-let lastGPTPayload = "";
-
-const statusEl = document.getElementById("status");
-const calcBtn = document.getElementById("calcBtn");
-
-function pad2(n){ return String(n).padStart(2,"0"); }
-
-function toUtcIso(dateStr, timeStr, tz){
-  const [Y,M,D] = dateStr.split("-").map(Number);
-  const [h,m] = timeStr.split(":").map(Number);
-  const offsetHours = (tz === "KST") ? 9 : 0;
-  const utcMs = Date.UTC(Y, M-1, D, h - offsetHours, m, 0);
-  const d = new Date(utcMs);
-  return `${d.getUTCFullYear()}-${pad2(d.getUTCMonth()+1)}-${pad2(d.getUTCDate())}T${pad2(d.getUTCHours())}:${pad2(d.getUTCMinutes())}:${pad2(d.getUTCSeconds())}`;
-}
-
-async function loadKernelsOnce(){
-  if (kernelsLoaded) return;
-  statusEl.textContent = "NASA 커널 로딩 중… (처음 1회는 수 초 걸릴 수 있음)";
-  try{
-    spice.kclear();
-    spice.furnsh(TLS_LOCAL);
-    spice.furnsh(PCK_LOCAL);
-    spice.furnsh(DE440);
-    kernelsLoaded = true;
-    statusEl.textContent = "커널 로딩 완료. 이제 계산 가능합니다.";
-  }catch(e){
-    statusEl.textContent = "커널 로딩 실패: " + (e?.message || e);
-    throw e;
+  @media (max-width:520px){
+    .sajuGrid{grid-template-columns:1fr;}
   }
-}
-
-/** =========================
- *  24절기 / 월지(지지) 한글/한자
- *  - 기준: 입춘(315°)부터 인월 시작 (절기 기반)
- *  ========================= */
-const branches = [
-  {ko:"자", han:"子"}, {ko:"축", han:"丑"}, {ko:"인", han:"寅"}, {ko:"묘", han:"卯"},
-  {ko:"진", han:"辰"}, {ko:"사", han:"巳"}, {ko:"오", han:"午"}, {ko:"미", han:"未"},
-  {ko:"신", han:"申"}, {ko:"유", han:"酉"}, {ko:"술", han:"戌"}, {ko:"해", han:"亥"},
-];
-
-const solarTerms = [
-  {name:"춘분", deg:0}, {name:"청명", deg:15}, {name:"곡우", deg:30},
-  {name:"입하", deg:45}, {name:"소만", deg:60}, {name:"망종", deg:75},
-  {name:"하지", deg:90}, {name:"소서", deg:105}, {name:"대서", deg:120},
-  {name:"입추", deg:135}, {name:"처서", deg:150}, {name:"백로", deg:165},
-  {name:"추분", deg:180}, {name:"한로", deg:195}, {name:"상강", deg:210},
-  {name:"입동", deg:225}, {name:"소설", deg:240}, {name:"대설", deg:255},
-  {name:"동지", deg:270}, {name:"소한", deg:285}, {name:"대한", deg:300},
-  {name:"입춘", deg:315}, {name:"우수", deg:330}, {name:"경칩", deg:345},
-];
-
-// lon(0..360)에서 “직전 절기 구간” 찾기
-function getSolarTermInterval(lon){
-  const deg = (lon % 360 + 360) % 360;
-  // solarTerms는 0→…→345, 입춘이 315로 뒤쪽에 있음.
-  // 그래서 “구간”은 직전 절기부터 다음 절기 전까지.
-  // 가장 간단하게: deg 이하인 절기 중 가장 큰 deg를 찾되, 없으면 345(경칩)로 간주.
-  let best = solarTerms[solarTerms.length-1]; // 경칩(345)
-  for (const t of solarTerms){
-    if (t.deg <= deg) best = t;
-  }
-  return best;
-}
-
-// 절기 기반 월지: 입춘(315)~경칩(345)=인월, 경칩~청명=묘월 ... (절기 2개당 1개월)
-function monthBranchFromLon(lon){
-  // 24절기(15도 간격) -> 인월 시작을 315도로 맞추려면,
-  // "입춘(315)"을 인월 첫 절기로 두고, 절기 인덱스를 기준으로 2개씩 월 이동.
-  // 먼저 0..23 절기 인덱스를 만든다: 315(입춘) = 0, 330(우수)=1, 345(경칩)=2, 0(춘분)=3 ...
-  const deg = (lon % 360 + 360) % 360;
-  const shifted = (deg - 315 + 360) % 360; // 입춘을 0도로
-  const termIndexFromIpchun = Math.floor(shifted / 15); // 0..23
-  const monthIndexFromIn = Math.floor(termIndexFromIpchun / 2); // 0..11 (인월부터)
-  // 인월=branches[2] (寅) 이므로:
-  const branchIndex = (2 + monthIndexFromIn) % 12;
-  return { branchIndex, termIndexFromIpchun };
-}
-
-/** =========================
- *  태양 황경 계산 (ECLIPDATE, LT+S)
- *  ========================= */
-function solarLongitudeFromVector(x,y){
-  let lon = Math.atan2(y,x) * 180 / Math.PI;
-  if (lon < 0) lon += 360;
-  return lon;
-}
-
-/** =========================
- *  진태양시 기반 시주 계산
- *  - 가능하면 SPICE sidtim 사용
- *  - 실패 시: "표준시 기반(대체)"로 표시
- *  ========================= */
-function parseHMS(hms){
-  // "hh:mm:ss.sss" or "hh:mm:ss"
-  const [h,m,s] = hms.split(":");
-  return Number(h) + Number(m)/60 + Number(s)/3600;
-}
-function normalizeRad(x){
-  const twoPi = 2*Math.PI;
-  x = x % twoPi;
-  if (x < 0) x += twoPi;
-  return x;
-}
-function radToHours(rad){
-  return rad * 12 / Math.PI;
-}
-function getHourBranchFromHours(h){
-  // 진태양시(LAST) 기준: 子=23-01, 丑=01-03 ...
-  const ranges = [
-    {idx:0, start:23, end:1}, {idx:1, start:1, end:3}, {idx:2, start:3, end:5}, {idx:3, start:5, end:7},
-    {idx:4, start:7, end:9}, {idx:5, start:9, end:11}, {idx:6, start:11, end:13}, {idx:7, start:13, end:15},
-    {idx:8, start:15, end:17}, {idx:9, start:17, end:19}, {idx:10, start:19, end:21}, {idx:11, start:21, end:23},
-  ];
-  for (const r of ranges){
-    if (r.start < r.end){
-      if (h >= r.start && h < r.end) return r.idx;
-    } else {
-      if (h >= r.start || h < r.end) return r.idx; // 子시
-    }
-  }
-  return null;
-}
-
-function localApparentSolarTimeHours(et, lonDeg){
-  // 1) 태양 겉보기 위치(J2000 적도좌표)에서 적경(RA)
-  const posEq = spice.spkpos("SUN", et, "J2000", "LT+S", "EARTH");
-  const x = posEq[0][0], y = posEq[0][1];
-  let ra = Math.atan2(y, x);
-  ra = normalizeRad(ra);
-
-  // 2) 국지 항성시(겉보기) – sidtim 사용 시도
-  const lonRad = lonDeg * Math.PI / 180;
-  const lstStr = spice.sidtim(et, "J2000", lonRad, "APPARENT"); // 존재하면 "hh:mm:ss.sss"
-  const lstH = parseHMS(lstStr);
-  const lstRad = (lstH/24) * 2*Math.PI;
-
-  // 3) 시간각 H = LST - RA
-  let H = lstRad - ra;
-  // -pi..pi
-  H = ((H + Math.PI) % (2*Math.PI)) - Math.PI;
-
-  // 4) LAST = 12h + H(시간)
-  let last = 12 + radToHours(H);
-  last = (last % 24 + 24) % 24;
-  return last;
-}
-
-/** =========================
- *  지오코딩 (OpenStreetMap Nominatim)
- *  ========================= */
-async function searchPlace(q){
-  const url = `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(q)}`;
-  const res = await fetch(url, { headers: { "Accept-Language": "ko,en" }});
-  return await res.json();
-}
-
-const placeInput = document.getElementById("place");
-const placeList = document.getElementById("placeList");
-const coordInput = document.getElementById("coord");
-
-let debounceTimer = null;
-placeInput.addEventListener("input", () => {
-  clearTimeout(debounceTimer);
-  debounceTimer = setTimeout(async () => {
-    const q = placeInput.value.trim();
-    placeList.innerHTML = "";
-    selectedLocation = null;
-    coordInput.value = "";
-
-    if (q.length < 2) return;
-
-    const results = await searchPlace(q);
-    if (!results?.length) return;
-
-    const box = document.createElement("div");
-    box.className = "listbox";
-    results.slice(0,6).forEach(r => {
-      const div = document.createElement("div");
-      div.className = "item";
-      div.textContent = r.display_name;
-      div.onclick = () => {
-        selectedLocation = {
-          name: r.display_name,
-          lat: parseFloat(r.lat),
-          lon: parseFloat(r.lon),
-        };
-        placeInput.value = r.display_name;
-        coordInput.value = `경도 ${selectedLocation.lon.toFixed(5)}°, 위도 ${selectedLocation.lat.toFixed(5)}°`;
-        placeList.innerHTML = "";
-      };
-      box.appendChild(div);
-    });
-    placeList.appendChild(box);
-  }, 220);
-});
-
-/** =========================
- *  출력 유틸
- *  ========================= */
-function setKV(rows){
-  const kv = document.getElementById("kv");
-  kv.innerHTML = "";
-  for (const [k,v] of rows){
-    const dk = document.createElement("div");
-    dk.className = "k";
-    dk.textContent = k;
-    const dv = document.createElement("div");
-    dv.className = "v";
-    dv.textContent = v;
-    kv.appendChild(dk);
-    kv.appendChild(dv);
-  }
-}
-
-function setWarnings(msgs){
-  const w = document.getElementById("warnings");
-  w.innerHTML = "";
-  if (!msgs.length) return;
-  for (const m of msgs){
-    const div = document.createElement("div");
-    div.className = "warn" + (m.level === "danger" ? " danger" : "");
-    div.textContent = m.text;
-    w.appendChild(div);
-  }
-}
-
-function minutesToNearestHourBoundary(lastHours){
-  // boundaries: 1,3,5,...23 plus 0/24
-  const boundaries = [1,3,5,7,9,11,13,15,17,19,21,23,24,0];
-  const curMin = lastHours * 60;
-  let best = Infinity;
-  for (const b of boundaries){
-    const bMin = b * 60;
-    for (const c of [bMin, bMin+1440, bMin-1440]){
-      const diff = Math.abs(c - curMin);
-      if (diff < best) best = diff;
-    }
-  }
-  return best;
-}
-
-async function init(){
-  // 기본값: 오늘 날짜/현재시간(KST 기준으로 쓰기 좋게)
-  const now = new Date();
-  document.getElementById("date").value = `${now.getFullYear()}-${pad2(now.getMonth()+1)}-${pad2(now.getDate())}`;
-  document.getElementById("time").value = `${pad2(now.getHours())}:${pad2(now.getMinutes())}`;
-
-  try{
-    await loadKernelsOnce();
-    calcBtn.disabled = false;
-  }catch(e){
-    calcBtn.disabled = true;
-  }
-}
-init();
-
-/** =========================
- *  메인 계산
- *  ========================= */
-async function calculate(){
-  const date = document.getElementById("date").value;
-  const time = document.getElementById("time").value;
-  const tz = document.getElementById("tz").value;
-
-  if (!date || !time){
-    alert("날짜와 시각을 입력하세요.");
-    return;
-  }
-
-  await loadKernelsOnce();
-
-  const utc = toUtcIso(date, time, tz);
-  const et = spice.utc2et(utc);
-
-  // 1) 태양 겉보기 황경 (ECLIPDATE, LT+S)
-  const posEcl = spice.spkpos("SUN", et, "ECLIPDATE", "LT+S", "EARTH");
-  const ex = posEcl[0][0], ey = posEcl[0][1];
-  const lon = solarLongitudeFromVector(ex, ey);
-
-  // 2) 절기 구간 / 월지
-  const termInterval = getSolarTermInterval(lon); // 직전 절기
-  const { branchIndex, termIndexFromIpchun } = monthBranchFromLon(lon);
-  const monthBranch = branches[branchIndex];
-
-  // 3) 시주 (진태양시) - 도시 선택 없으면 경도 0으로 계산(정확도 떨어짐)
-  let hourBranch = null;
-  let lastHours = null;
-  let hourMode = "진태양시";
-  let lonDegForTime = selectedLocation ? selectedLocation.lon : null;
-
-  try{
-    if (lonDegForTime === null){
-      // 도시가 없으면 표준시 기반으로 대체 (명시)
-      hourMode = "표준시(대체)";
-      const [h] = time.split(":").map(Number);
-      // 표준시 기준 대략 시주 판정(정확도 낮음)
-      const idx = getHourBranchFromHours((h+0.0001)%24);
-      hourBranch = branches[idx];
-      lastHours = null;
-    } else {
-      lastHours = localApparentSolarTimeHours(et, lonDegForTime);
-      const idx = getHourBranchFromHours(lastHours);
-      hourBranch = branches[idx];
-    }
-  }catch(e){
-    // sidtim 미지원 등
-    hourMode = "표준시(대체)";
-    const [h] = time.split(":").map(Number);
-    const idx = getHourBranchFromHours((h+0.0001)%24);
-    hourBranch = branches[idx];
-    lastHours = null;
-  }
-
-  // 4) 경계 경고 (시주만)
-  const warnings = [];
-  if (lastHours !== null){
-    const m = minutesToNearestHourBoundary(lastHours);
-    if (m <= 10) warnings.push({level:"danger", text:`⚠️ 시주 경계(진태양시) ${Math.round(m)}분 이내: 시지 판정이 매우 민감합니다.`});
-    else if (m <= 30) warnings.push({level:"warn", text:`주의: 시주 경계(진태양시) ${Math.round(m)}분 이내입니다.`});
-  } else {
-    warnings.push({level:"warn", text:`참고: 출생지 경도가 없거나 sidtim 계산이 불가하여 시주는 표준시(대체)로 산출했습니다. 정확도를 원하면 도시를 선택하세요.`});
-  }
-
-  setWarnings(warnings);
-
-  // 5) 화면 요약 출력
-  const locName = selectedLocation ? selectedLocation.name : "미선택";
-  const coordStr = selectedLocation ? `경도 ${selectedLocation.lon.toFixed(5)}°, 위도 ${selectedLocation.lat.toFixed(5)}°` : "—";
-
-  setKV([
-    ["입력(로컬)", `${date} ${time} (${tz})`],
-    ["UTC(계산)", `${utc}Z`],
-    ["출생지", locName],
-    ["좌표", coordStr],
-    ["태양 황경", `${lon.toFixed(6)}°`],
-    ["절기(구간)", `${termInterval.name}`],
-    ["월지(절기월)", `${monthBranch.ko}월 (${monthBranch.han})`],
-    ["시주", `${hourBranch.ko}시 (${hourBranch.han}) · ${hourMode}${lastHours!==null?` · 진태양시 ${lastHours.toFixed(4)}h`:``}`],
-  ]);
-
-  // 6) 연구용 원문
-  const raw = document.getElementById("raw");
-  raw.textContent =
-`[ASTRONOMICAL BASIS]
-Local input: ${date} ${time} (${tz})
-UTC used: ${utc}Z
-Location: ${locName}
-Coordinates: ${coordStr}
-
-Ephemeris: NASA JPL DE440s (remote)
-LSK (leap seconds): ${TLS_LOCAL} (local)
-PCK (constants): ${PCK_LOCAL} (local)
-
-Solar longitude (true apparent):
-- Frame: ECLIPDATE
-- Corrections: LT+S
-- λ☉ = ${lon.toFixed(9)} deg
-
-Solar-term interval (by λ☉, 15° grid): ${termInterval.name}
-Seasonal month branch (by solar terms): ${monthBranch.ko} (${monthBranch.han})
-Hour branch: ${hourBranch.ko} (${hourBranch.han})
-Hour mode: ${hourMode}${lastHours!==null?`\nLocal apparent solar time (LAST): ${lastHours.toFixed(6)} h`:``}
-Term index from Ipchun (0..23): ${termIndexFromIpchun}
-`;
-
-  // 7) GPT용 payload
-  lastGPTPayload =
-`[ASTRONOMICAL BASIS]
-Local input: ${date} ${time} (${tz})
-UTC used: ${utc}Z
-Location: ${locName}
-Coordinates: ${coordStr}
-
-Solar longitude (true apparent, ECLIPDATE, LT+S): ${lon.toFixed(6)}°
-Solar-term interval: ${termInterval.name}
-Seasonal month branch: ${monthBranch.ko} (${monthBranch.han})
-Hour branch: ${hourBranch.ko} (${hourBranch.han}) [${hourMode}]${lastHours!==null?`\nLAST: ${lastHours.toFixed(6)} h`:``}
-
-[REQUEST]
-Explain the calendrical structure (solar-term month + hour branch) in a neutral, non-fortune-telling way.`;
-
-  document.getElementById("copyBtn").disabled = false;
-  document.getElementById("openBtn").disabled = false;
-}
-
-/** =========================
- *  Copy / Open ChatGPT
- *  ========================= */
-function copyForGPT(){
-  if (!lastGPTPayload) return;
-  navigator.clipboard.writeText(lastGPTPayload).then(() => {
-    alert("GPT용 결과를 복사했습니다.");
-  }).catch(() => {
-    prompt("아래 텍스트를 복사하세요:", lastGPTPayload);
-  });
-}
-
-// NOTE: ChatGPT URL 파라미터 방식은 환경에 따라 동작이 다를 수 있어
-// “새 탭 열기 + 자동 입력”이 안 되면 복사 버튼을 사용하세요.
-function openInChatGPT(){
-  if (!lastGPTPayload) return;
-  const prompt = encodeURIComponent(lastGPTPayload);
-  const url = `https://chat.openai.com/?q=${prompt}`;
-  window.open(url, "_blank");
-}
-</script>
-
-</body>
-</html>
+  .sajuBox{
+    background: rgba(10,15,30,0.70);
+    border:1px solid var(--stroke);
+    border-radius:16px;
+    padding:
