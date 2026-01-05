@@ -1,0 +1,118 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>East Asian Calendrical Calculator (NASA SPICE)</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+<script src="asm_full.js"></script>
+
+<style>
+body{
+  background:#0b1020;
+  color:#e6e8ef;
+  font-family:system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;
+  margin:0;
+  padding:20px;
+}
+.card{
+  background:#121833;
+  padding:16px;
+  border-radius:10px;
+  margin-bottom:16px;
+  box-shadow:0 0 20px rgba(0,0,0,0.3);
+}
+input,button{
+  width:100%;
+  font-size:16px;
+  padding:12px;
+  margin-top:8px;
+  border-radius:6px;
+  border:none;
+}
+button{
+  background:#3b82f6;
+  color:white;
+  font-weight:600;
+}
+pre{
+  white-space:pre-wrap;
+  background:#0a0f22;
+  padding:12px;
+  border-radius:8px;
+}
+</style>
+</head>
+
+<body>
+
+<div class="card">
+<h2>NASA-based Solar Time Calculator</h2>
+
+<label>UTC date/time</label>
+<input id="utc" type="datetime-local" value="1984-11-26T12:39">
+
+<button onclick="run()">Calculate</button>
+</div>
+
+<div class="card">
+<h3>Result</h3>
+<pre id="out">Waiting…</pre>
+</div>
+
+<script>
+const DE440 = "https://naif.jpl.nasa.gov/pub/naif/generic_kernels/spk/planets/de440s.bsp";
+const TLS   = "https://naif.jpl.nasa.gov/pub/naif/generic_kernels/lsk/naif0012.tls";
+const PCK   = "https://naif.jpl.nasa.gov/pub/naif/generic_kernels/pck/pck00010.tpc";
+
+let kernelsLoaded = false;
+
+async function loadKernels(){
+  if(kernelsLoaded) return;
+  spice.furnsh(TLS);
+  spice.furnsh(PCK);
+  spice.furnsh(DE440);
+  kernelsLoaded = true;
+}
+
+function solarLongitudeFromVector(x,y){
+  let lon = Math.atan2(y,x) * 180 / Math.PI;
+  if(lon < 0) lon += 360;
+  return lon;
+}
+
+function solarTerm(lon){
+  return Math.floor(lon / 15);
+}
+
+async function run(){
+  const out = document.getElementById("out");
+  out.textContent = "Loading NASA kernels…\n";
+
+  await loadKernels();
+
+  const utc = document.getElementById("utc").value;
+  const et = spice.utc2et(utc);
+
+  const pos = spice.spkpos("SUN", et, "ECLIPDATE", "LT+S", "EARTH");
+
+  const x = pos[0][0];
+  const y = pos[0][1];
+
+  const lon = solarLongitudeFromVector(x,y);
+  const term = solarTerm(lon);
+
+  const monthBranch = (term + 2) % 12;
+
+  out.textContent =
+    "UTC: " + utc + "\n\n" +
+    "True Apparent Solar Longitude: " + lon.toFixed(6) + "°\n" +
+    "Solar Term Index (0-23): " + term + "\n" +
+    "Seasonal Month Branch (0-11): " + monthBranch + "\n\n" +
+    "Data source: NASA JPL DE440s\n" +
+    "Frame: ECLIPDATE, LT+S";
+}
+</script>
+
+</body>
+</html>
