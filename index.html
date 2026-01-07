@@ -1,193 +1,92 @@
+<!--
+NASA 천문명리 시스템 (Sky Chronos)
+Data: NASA JPL DE440s + SPICE
+-->
 <!DOCTYPE html>
 <html lang="ko">
 <head>
-<meta charset="UTF-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1.0" />
-<title>East Asian Calendrical Calculator (NASA SPICE)</title>
-
-<!-- NASA AMMOS/TimeCraftJS asm.js engine (local file in repo) -->
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>NASA 천문명리 시스템 (Sky Chronos)</title>
+<meta name="description" content="NASA JPL DE440s 천체력과 SPICE 엔진으로 절기·월지·시주를 계산하는 동양 역법 시스템"/>
 <script src="asm_full.js"></script>
 
 <style>
-  :root{
-    --bg:#0b1020;
-    --card:#101833;
-    --card2:#0e152d;
-    --stroke:rgba(255,255,255,0.07);
-    --text:#e9ecf6;
-    --muted:#aab2cc;
+body{margin:0;background:#0b1020;color:#e9ecf6;font-family:system-ui;padding:16px;padding-bottom:120px}
+.card{background:#101833;border-radius:16px;padding:14px;margin-bottom:12px}
+button{width:100%;padding:14px;border-radius:12px;border:none;font-weight:900;background:#6ea8ff;color:#000}
+</style>
+</head>
 
-    --accent:#6ea8ff;
-    --accent2:#22c55e;
+<body>
+<h1>NASA 천문명리 시스템 (Sky Chronos)</h1>
 
-    --warn:#fbbf24;
-    --danger:#fb7185;
+<div class="card">
+<label>날짜</label>
+<input id="date" type="date">
+<label>시각</label>
+<input id="time" type="time">
+<button onclick="calc()">NASA 기준 계산</button>
+</div>
 
-    --shadow: 0 12px 30px rgba(0,0,0,0.35);
-    --radius: 18px;
-  }
+<div class="card">
+<h3>결과</h3>
+<div id="out">—</div>
+</div>
 
-  *{box-sizing:border-box}
-  body{
-    margin:0;
-    background: radial-gradient(1200px 600px at 30% -10%, rgba(110,168,255,0.18), transparent 55%),
-                radial-gradient(900px 500px at 90% 10%, rgba(34,197,94,0.10), transparent 60%),
-                var(--bg);
-    color:var(--text);
-    font-family: system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;
-    padding:18px;
-    padding-bottom:140px;
-  }
+<div class="card">
+<h3>GPT용 출력</h3>
+<pre id="raw"></pre>
+<button onclick="copy()">GPT로 복사</button>
+</div>
 
-  .wrap{max-width:860px; margin:0 auto;}
-  .topbar{
-    display:flex; align-items:center; justify-content:space-between;
-    gap:12px; margin:6px 0 14px;
-  }
-  .brand{
-    display:flex; flex-direction:column; gap:3px;
-  }
-  .brand .title{
-    font-weight:900; letter-spacing:-0.3px; font-size:18px;
-  }
-  .brand .sub{
-    color:var(--muted); font-size:12px; line-height:1.35;
-  }
-  .chip{
-    display:inline-flex; align-items:center; gap:8px;
-    padding:8px 10px;
-    border:1px solid var(--stroke);
-    background:rgba(255,255,255,0.03);
-    border-radius:999px;
-    color:var(--muted);
-    font-size:12px;
-    white-space:nowrap;
-  }
-  .dot{width:8px; height:8px; border-radius:999px; background:var(--warn);}
-  .dot.ok{background:var(--accent2);}
-  .dot.bad{background:var(--danger);}
+<script>
+function pad(n){return String(n).padStart(2,'0');}
+function toUTC(d,t){
+  const [Y,M,D]=d.split('-').map(Number);
+  const [h,m]=t.split(':').map(Number);
+  return new Date(Date.UTC(Y,M-1,D,h-9,m,0)).toISOString().replace('.000Z','');
+}
 
-  .card{
-    background: linear-gradient(180deg, rgba(255,255,255,0.03), rgba(255,255,255,0.00));
-    border: 1px solid var(--stroke);
-    border-radius: var(--radius);
-    box-shadow: var(--shadow);
-    padding:14px;
-    margin-bottom:12px;
-  }
+const terms=["춘분","청명","곡우","입하","소만","망종","하지","소서","대서","입추","처서","백로","추분","한로","상강","입동","소설","대설","동지","소한","대한","입춘","우수","경칩"];
+const branches=["자","축","인","묘","진","사","오","미","신","유","술","해"];
 
-  .sectionTitle{
-    display:flex; align-items:center; justify-content:space-between;
-    gap:10px; margin-bottom:10px;
-  }
-  .sectionTitle h2{
-    margin:0; font-size:14px; letter-spacing:-0.2px;
-  }
-  .sectionTitle .hint{
-    color:var(--muted); font-size:12px;
-  }
+function calc(){
+  spice.kclear();
+  spice.furnsh("naif0012.tls");
+  spice.furnsh("pck00010.tpc");
+  spice.furnsh("https://naif.jpl.nasa.gov/pub/naif/generic_kernels/spk/planets/de440s.bsp");
 
-  label{
-    display:block;
-    color:var(--muted);
-    font-size:12px;
-    margin:8px 0 6px;
-  }
+  const d=document.getElementById("date").value;
+  const t=document.getElementById("time").value;
+  const utc=toUTC(d,t);
+  const et=spice.utc2et(utc);
 
-  input, select, button{
-    width:100%;
-    font-size:16px;   /* 모바일 자동 확대 방지 */
-    min-height:46px;  /* 터치 타겟 */
-    padding:12px 12px;
-    border-radius:14px;
-    border:1px solid var(--stroke);
-    background: rgba(10,15,30,0.75);
-    color:var(--text);
-    outline:none;
-  }
-  input::placeholder{color:rgba(170,178,204,0.65)}
-  select{appearance:none;}
+  const pos=spice.spkpos("SUN",et,"ECLIPDATE","LT+S","EARTH");
+  const x=pos[0][0],y=pos[0][1];
+  let lon=Math.atan2(y,x)*180/Math.PI;
+  if(lon<0)lon+=360;
 
-  .grid2{
-    display:grid;
-    grid-template-columns:1fr 1fr;
-    gap:10px;
-  }
-  @media (max-width:520px){
-    .grid2{grid-template-columns:1fr;}
-  }
+  const termIndex=Math.floor(lon/15);
+  const term=terms[termIndex%24];
+  const month=branches[(Math.floor((lon-315+360)%360/30)+2)%12];
+  const hour=branches[Math.floor(new Date(d+"T"+t).getHours()/2)%12];
 
-  .btn{
-    border:none;
-    font-weight:900;
-    letter-spacing:0.2px;
-    cursor:pointer;
-  }
-  .btn.primary{
-    background: linear-gradient(90deg, rgba(110,168,255,0.95), rgba(110,168,255,0.70));
-    color:#061027;
-  }
-  .btn.primary:disabled{opacity:.55; cursor:not-allowed;}
-  .btn.secondary{
-    background: linear-gradient(90deg, rgba(34,197,94,0.95), rgba(34,197,94,0.75));
-    color:#07190f;
-  }
+  const txt=`절기: ${term}\n월지: ${month}\n시주: ${hour}\n태양황경: ${lon.toFixed(6)}°`;
+  document.getElementById("out").innerText=txt;
+  document.getElementById("raw").innerText=
+`[ASTRONOMICAL BASIS]
+UTC: ${utc}
+Solar longitude: ${lon.toFixed(9)}
+Solar-term: ${term}
+Month branch: ${month}
+Hour branch: ${hour}`;
+}
 
-  .note{
-    margin-top:10px;
-    padding:10px 12px;
-    border-radius:14px;
-    border:1px solid rgba(110,168,255,0.22);
-    background: rgba(110,168,255,0.08);
-    color:#dbe7ff;
-    font-size:12px;
-    line-height:1.45;
-  }
-
-  .listbox{
-    margin-top:8px;
-    border:1px solid var(--stroke);
-    background: rgba(10,15,30,0.92);
-    border-radius:14px;
-    overflow:hidden;
-  }
-  .item{
-    padding:12px 12px;
-    border-top:1px solid rgba(255,255,255,0.06);
-    cursor:pointer;
-    font-size:14px;
-    line-height:1.35;
-  }
-  .item:first-child{border-top:none}
-  .item:hover{background: rgba(255,255,255,0.05);}
-
-  /* Result “Saju-style” */
-  .resultHeader{
-    display:flex; align-items:flex-start; justify-content:space-between; gap:12px;
-  }
-  .bigline{
-    font-size:18px;
-    font-weight:950;
-    margin:0;
-    letter-spacing:-0.3px;
-  }
-  .smallline{
-    color:var(--muted);
-    font-size:12px;
-    margin-top:4px;
-    line-height:1.35;
-  }
-  .sajuGrid{
-    margin-top:12px;
-    display:grid;
-    grid-template-columns: 1fr 1fr 1fr;
-    gap:10px;
-  }
-  @media (max-width:520px){
-    .sajuGrid{grid-template-columns:1fr;}
-  }
-  .sajuBox{
-    background: rgba(10,15,30,0.70);
-    border:1px solid var(--stroke);
-    border-radius:16px;
-    padding:
+function copy(){
+  navigator.clipboard.writeText(document.getElementById("raw").innerText);
+  alert("복사됨");
+}
+</script>
+</body>
+</html>
