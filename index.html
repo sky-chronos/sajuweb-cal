@@ -11,6 +11,134 @@ Data: NASA JPL DE440s + SPICE
 <meta name="description" content="NASA JPL DE440s 천체력과 SPICE 엔진으로 절기·월지·시주를 계산하는 동양 역법 시스템"/>
 <script src="asm_full.js"></script>
 
+<script>
+/**
+ * Sky Chronos — SPICE JS wrapper for Emscripten asm.js builds
+ * Exposes: window.spice.kclear(), furnsh(pathOrUrl), utc2et(utcString), spkpos(...)
+ *
+ * Requirements:
+ * - asm_full.js must define global `Module`
+ * - CSPICE symbols exported: kclear_c, furnsh_c, str2et_c, spkpos_c
+ */
+
+(function initSpiceWrapper(){
+  function fail(msg){
+    console.error(msg);
+    alert(msg);
+  }
+
+  function makeSpice(Module){
+    // --- helpers ---
+    const malloc = Module._malloc.bind(Module);
+    const free   = Module._free.bind(Module);
+    const HEAPF64 = Module.HEAPF64;
+
+    function allocCString(str){
+      const n = Module.lengthBytesUTF8(str) + 1;
+      const p = malloc(n);
+      Module.stringToUTF8(str, p, n);
+      return p;
+    }
+
+    function readF64(ptr, count){
+      const base = ptr >> 3; // /8
+      const out = [];
+      for (let i=0;i<count;i++) out.push(HEAPF64[base + i]);
+      return out;
+    }
+
+    // --- bind CSPICE functions ---
+    const kclear_c = Module.cwrap("kclear_c", null, []);
+    const furnsh_c = Module.cwrap("furnsh_c", null, ["number"]);
+    const str2et_c = Module.cwrap("str2et_c", null, ["number","number"]);
+    const spkpos_c = Module.cwrap("spkpos_c", null, ["number","number","number","number","number","number","number"]);
+
+    // Basic sanity checks (if symbol missing, cwrap may throw or be undefined)
+    if (!kclear_c || !furnsh_c || !str2et_c || !spkpos_c){
+      throw new Error("CSPICE exported symbols missing. Need: kclear_c, furnsh_c, str2et_c, spkpos_c");
+    }
+
+    return {
+      // Clear loaded kernels
+      kclear(){
+        kclear_c();
+      },
+
+      // Load kernel file (local path in repo OR remote URL if CORS allows)
+      furnsh(pathOrUrl){
+        const p = allocCString(pathOrUrl);
+        try { furnsh_c(p); }
+        finally { free(p); }
+      },
+
+      // Convert UTC string -> ET seconds past J2000 (SPICE)
+      utc2et(utc){
+        const s = allocCString(utc);
+        const etPtr = malloc(8);
+        try{
+          str2et_c(s, etPtr);
+          return readF64(etPtr,1)[0];
+        } finally {
+          free(etPtr);
+          free(s);
+        }
+      },
+
+      // spkpos wrapper
+      // returns: [[x,y,z], lt]
+      spkpos(targ, et, ref, abcorr, obs){
+        const targP = allocCString(targ);
+        const refP  = allocCString(ref);
+        const abP   = allocCString(abcorr);
+        const obsP  = allocCString(obs);
+
+        const posPtr = malloc(3 * 8);
+        const ltPtr  = malloc(8);
+
+        try{
+          spkpos_c(targP, et, refP, abP, obsP, posPtr, ltPtr);
+          const pos = readF64(posPtr,3);
+          const lt  = readF64(ltPtr,1)[0];
+          return [pos, lt];
+        } finally {
+          free(ltPtr); free(posPtr);
+          free(obsP); free(abP); free(refP); free(targP);
+        }
+      }
+    };
+  }
+
+  // Wait until Module exists
+  if (typeof window.Module === "undefined"){
+    fail("asm_full.js는 로드됐지만 전역 Module을 찾지 못했습니다. <script src='asm_full.js'>가 index.html에 포함되어 있는지 확인하세요.");
+    return;
+  }
+
+  // Hook runtime init (Emscripten)
+  const prev = window.Module.onRuntimeInitialized;
+  window.Module.onRuntimeInitialized = function(){
+    try{
+      if (typeof prev === "function") prev();
+      window.spice = makeSpice(window.Module);
+      console.log("[Sky Chronos] window.spice ready");
+      // 버튼 활성화 같은 후속 처리 원하면 여기서
+      // document.getElementById("calcBtn")?.removeAttribute("disabled");
+    }catch(e){
+      console.error(e);
+      fail("SPICE 래퍼 초기화 실패: " + (e && e.message ? e.message : e));
+    }
+  };
+
+  // 일부 빌드는 onRuntimeInitialized가 이미 지난 상태일 수 있음 → 즉시 시도
+  try{
+    if (window.Module.calledRun) {
+      window.spice = makeSpice(window.Module);
+      console.log("[Sky Chronos] window.spice ready (late attach)");
+    }
+  }catch(_){}
+})();
+</script>
+  
 <style>
 body{margin:0;background:#0b1020;color:#e9ecf6;font-family:system-ui;padding:16px;padding-bottom:120px}
 .card{background:#101833;border-radius:16px;padding:14px;margin-bottom:12px}
@@ -93,4 +221,5 @@ function copy(){
 </script>
 </body>
 </html>
+
 
