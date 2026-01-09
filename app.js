@@ -115,6 +115,12 @@ function onCalc(){
 
     // 🔒 이미 계산된 4주(기존 STEP 4-2 결과와 동일 로직 가정)
     const pillars = window.__LAST_PILLARS__; // STEP 4-2에서 생성된 값
+    window.__LAST_PILLARS__ = {
+  year: { stem: pillars.year.text[0], branch: pillars.year.text[1] },
+  month:{ stem: pillars.month.text[0], branch: pillars.month.text[1] },
+  day:  { stem: pillars.day.text[0], branch: pillars.day.text[1] },
+  hour: { stem: pillars.hour.text[0], branch: pillars.hour.text[1] }
+};
     if(!pillars) throw new Error("사주 4주 정보가 없습니다. (STEP 4-2 확인)");
 
     const dayStem=pillars.day.stem;
@@ -179,3 +185,4 @@ function init(){
   updateUI();
 }
 init();
+
