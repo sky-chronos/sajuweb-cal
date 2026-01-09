@@ -1,0 +1,560 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
+  <title>Sky Chronos v4 — NASA 태양황경 기반 절기·만세력 계산기</title>
+  <style>
+    :root{
+      --bg:#0b1020; --card:#101833; --muted:#b9c2e2; --text:#e9ecf6; --line:#223055;
+      --btn:#1b2a55; --btn2:#233a75; --good:#19c37d; --warn:#ffcc66; --bad:#ff6b6b;
+    }
+    body{margin:0;background:var(--bg);color:var(--text);font-family:system-ui,-apple-system,Segoe UI,Roboto,Apple SD Gothic Neo,Noto Sans KR,sans-serif; padding:16px; padding-bottom:120px;}
+    h1{font-size:18px;margin:6px 0 14px 0;letter-spacing:-0.2px}
+    .sub{color:var(--muted);font-size:12px;line-height:1.4}
+    .card{background:var(--card);border:1px solid rgba(255,255,255,0.06);border-radius:16px;padding:14px;margin:12px 0}
+    .row{display:flex;gap:10px;flex-wrap:wrap}
+    label{display:block;font-size:12px;color:var(--muted);margin:0 0 6px 2px}
+    input,select{width:100%; box-sizing:border-box; padding:10px 12px;border-radius:12px;border:1px solid rgba(255,255,255,0.10); background:#0c1430;color:var(--text); font-size:14px}
+    button{background:var(--btn);color:var(--text);border:1px solid rgba(255,255,255,0.10);border-radius:14px;padding:10px 12px;font-size:14px;cursor:pointer}
+    button:hover{background:var(--btn2)}
+    .grid{display:grid;grid-template-columns:1fr;gap:8px}
+    .kv{display:flex;justify-content:space-between;gap:10px;border:1px solid rgba(255,255,255,0.06);border-radius:12px;padding:10px 12px;background:rgba(0,0,0,0.10)}
+    .k{color:var(--muted);font-size:12px;min-width:120px}
+    .v{font-size:14px;text-align:right;white-space:pre-wrap}
+    .badge{display:inline-block;padding:2px 8px;border-radius:999px;font-size:12px;margin-left:8px;border:1px solid rgba(255,255,255,0.10)}
+    .b-good{background:rgba(25,195,125,0.15); color:#bff3dc; border-color:rgba(25,195,125,0.35)}
+    .b-warn{background:rgba(255,204,102,0.12); color:#ffe1a8; border-color:rgba(255,204,102,0.35)}
+    .b-bad{background:rgba(255,107,107,0.12); color:#ffd0d0; border-color:rgba(255,107,107,0.35)}
+    pre{white-space:pre-wrap;word-break:break-word;background:#070b18;border:1px solid rgba(255,255,255,0.08);border-radius:14px;padding:12px;margin:10px 0 0 0;font-size:12px;line-height:1.5}
+    .help{font-size:12px;color:var(--muted);line-height:1.55}
+    .mini{font-size:11px;color:var(--muted)}
+    .sticky{position:fixed;left:0;right:0;bottom:0;padding:10px 16px;background:rgba(11,16,32,0.92);backdrop-filter: blur(10px);border-top:1px solid rgba(255,255,255,0.08)}
+    .sticky .row{justify-content:space-between;align-items:center}
+    .sticky .mini{margin:0}
+    .row > .col{flex:1;min-width:160px}
+    .row > .col.smallcol{min-width:140px}
+  </style>
+</head>
+<body>
+  <h1>Sky Chronos v4 <span class="badge">태양황경 기반 절기·만세력 계산</span></h1>
+  <div class="sub">
+    ✅ 목표: “이건 점이 아니라 계산” — 태양의 겉보기 황경(λ)으로 절기·절기월·4주(연월일시)를 산출합니다.<br/>
+    ⚠️ 이 페이지는 연구/검증용 계산기이며, 해석은 별도(예: GPT)에 붙여넣어 진행하세요.
+  </div>
+
+  <div class="card">
+    <div class="row">
+      <div class="col">
+        <label>날짜 (KST)</label>
+        <input id="date" type="date" value="2026-01-09" />
+      </div>
+      <div class="col smallcol">
+        <label>시각 (KST)</label>
+        <input id="time" type="time" value="21:39" />
+      </div>
+    </div>
+
+    <div class="row" style="margin-top:10px">
+      <div class="col">
+        <label>계산 모드</label>
+        <select id="mode">
+          <option value="apparent" selected>겉보기 태양(진황경 + 이심/경사 + 근사적 세차/장동/광행차)</option>
+          <option value="true">진태양(방정식 중심항 적용)</option>
+        </select>
+      </div>
+      <div class="col smallcol">
+        <label>일주 기준(선택)</label>
+        <select id="dayRule">
+          <option value="civil" selected>0시 기준(일반)</option>
+          <option value="midnight23">자정교자(23시 이후 다음날)</option>
+        </select>
+      </div>
+    </div>
+
+    <div class="row" style="margin-top:10px">
+      <div class="col">
+        <label>출생지(경도 °E) — 선택</label>
+        <input id="lonE" type="number" step="0.0001" value="126.9780" />
+      </div>
+      <div class="col">
+        <label>참고</label>
+        <div class="help">
+          서울 126.9780 / 제주 126.5312. (현재 v4는 절기·만세력 ‘표준 정의(절기+자정교자 옵션)’ 중심이며, 경도값은 로그에 함께 기록합니다.)
+        </div>
+      </div>
+    </div>
+
+    <div style="margin-top:12px" class="row">
+      <button id="calcBtn" onclick="calc()">NASA 기준 계산</button>
+      <button onclick="toggleHelp()">도움말</button>
+    </div>
+
+    <div id="helpBox" class="card" style="display:none; margin-top:12px">
+      <div class="help">
+        <b>경계(절기·일주) 안내</b><br/>
+        • 절기 경계 근처(예: ±2시간)는 일부 만세력/앱의 정의 차이로 결과가 갈릴 수 있습니다.<br/>
+        • <b>자정교자</b>: 23:00~23:59를 “다음날(일주)”로 보는 전통 호환 옵션입니다.<br/>
+        • 신뢰 등급(권장): |경계까지 시간| ≥ 12시간 → 높음 / 2~12시간 → 주의 / &lt;2시간 → 경계(양면 해석 권장).<br/><br/>
+        <b>한계 고지(필수)</b><br/>
+        • 이 페이지는 <b>계산기</b>이며, 해석은 별도로 하세요.<br/>
+        • 일부 해석(격국/용신/대운 등)은 전통 체계·정의에 따라 추가 데이터/가정이 필요합니다.
+      </div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="grid">
+      <div class="kv"><div class="k">입력(한국시간)</div><div class="v" id="out_kst">—</div></div>
+      <div class="kv"><div class="k">세계시(UTC)</div><div class="v" id="out_utc">—</div></div>
+      <div class="kv"><div class="k">계산 모드</div><div class="v" id="out_mode">—</div></div>
+
+      <div class="kv"><div class="k">태양 황경(λ)</div><div class="v" id="out_lon">—</div></div>
+      <div class="kv"><div class="k">절기</div><div class="v" id="out_term">—</div></div>
+      <div class="kv"><div class="k">절기 경계</div><div class="v" id="out_boundary">—</div></div>
+      <div class="kv"><div class="k">가장 가까운 경계</div><div class="v" id="out_near">—</div></div>
+      <div class="kv"><div class="k">경계까지 시간 차</div><div class="v" id="out_delta">—</div></div>
+      <div class="kv"><div class="k">신뢰 등급</div><div class="v" id="out_quality">—</div></div>
+
+      <div class="kv"><div class="k">절기월(월지)</div><div class="v" id="out_monthB">—</div></div>
+      <div class="kv"><div class="k">시지</div><div class="v" id="out_hourB">—</div></div>
+
+      <div class="kv"><div class="k">연주(年柱)</div><div class="v" id="out_yearP">—</div></div>
+      <div class="kv"><div class="k">월주(月柱)</div><div class="v" id="out_monthP">—</div></div>
+      <div class="kv"><div class="k">일주(日柱)</div><div class="v" id="out_dayP">—</div></div>
+      <div class="kv"><div class="k">시주(時柱)</div><div class="v" id="out_hourP">—</div></div>
+
+      <div class="kv"><div class="k">사주 4주(연·월·일·시)</div><div class="v" id="pillars">—</div></div>
+    </div>
+
+    <h3 style="margin:12px 0 6px 2px;font-size:14px">GPT용 출력</h3>
+    <div class="row">
+      <button onclick="copyGPT()">📋 결과 복사</button>
+      <button onclick="openGPT()">🤖 GPT에서 해석</button>
+    </div>
+    <pre id="raw">—</pre>
+  </div>
+
+  <div class="sticky">
+    <div class="row">
+      <div class="mini">© Sky Chronos — 계산값은 연구/검증용. “운명 단정”이 아닌 구조 분석 자료입니다.</div>
+      <div class="mini" id="ver">v4</div>
+    </div>
+  </div>
+
+<script>
+/* ===================== 기본 테이블 ===================== */
+const stems = ["갑","을","병","정","무","기","경","신","임","계"];
+const branches = ["자","축","인","묘","진","사","오","미","신","유","술","해"];
+const hanjaStems = ["甲","乙","丙","丁","戊","己","庚","辛","壬","癸"];
+const hanjaBranches = ["子","丑","寅","卯","辰","巳","午","未","申","酉","戌","亥"];
+
+// 24절기: 시작점을 입춘(315°)로 두고 15° 간격
+const terms = [
+  "입춘","우수","경칩","춘분","청명","곡우",
+  "입하","소만","망종","하지","소서","대서",
+  "입추","처서","백로","추분","한로","상강",
+  "입동","소설","대설","동지","소한","대한"
+];
+
+const monthBranchOrder = ["인","묘","진","사","오","미","신","유","술","해","자","축"]; // 입춘=인월 시작
+
+/* ===================== 유틸 ===================== */
+function pad2(n){ return String(n).padStart(2,"0"); }
+function clamp360(x){ x%=360; if(x<0) x+=360; return x; }
+function deg2rad(d){ return d*Math.PI/180; }
+function rad2deg(r){ return r*180/Math.PI; }
+
+function toggleHelp(){
+  const b = document.getElementById("helpBox");
+  b.style.display = (b.style.display==="none") ? "block" : "none";
+}
+
+/* ===================== JD/시간 변환 ===================== */
+function dateTimeKSTToUTCISO(dateStr, timeStr){
+  // dateStr: YYYY-MM-DD, timeStr: HH:MM
+  const [Y,M,D] = dateStr.split("-").map(Number);
+  const [h,m] = timeStr.split(":").map(Number);
+  // KST = UTC+9
+  const utc = new Date(Date.UTC(Y, M-1, D, h-9, m, 0));
+  const iso = `${utc.getUTCFullYear()}-${pad2(utc.getUTCMonth()+1)}-${pad2(utc.getUTCDate())} ${pad2(utc.getUTCHours())}:${pad2(utc.getUTCMinutes())}`;
+  return { utcDate: utc, utcIso: iso };
+}
+
+function julianDayFromDateUTC(d){
+  // d: Date (UTC-based)
+  return d.getTime()/86400000 + 2440587.5;
+}
+
+// “효력일(일주 계산용 날짜)”을 만들기: JDN을 안정적으로 뽑기 위해 KST 정오(12:00)를 사용
+function effectiveDateForDayPillar(dateStr, timeStr, dayRule){
+  const [Y,M,D] = dateStr.split("-").map(Number);
+  const [h,mm] = timeStr.split(":").map(Number);
+
+  // 기본은 입력 날짜 그대로
+  let eff = new Date(Date.UTC(Y, M-1, D, 3, 0, 0)); // 12:00 KST = 03:00 UTC
+
+  if(dayRule === "midnight23"){
+    // “23시 이후 다음날” → 입력 시간이 23:00~23:59면 효력일을 +1
+    if(h >= 23){
+      eff = new Date(eff.getTime() + 86400000);
+    }
+  }
+  // civil(0시 기준)은 날짜 그대로
+  return eff; // UTC Date at 03:00
+}
+
+/* ===================== 태양 황경(근사) ===================== */
+/*
+  NOAA 계열 근사식(일반적인 태양 겉보기 황경):
+  - T: Julian centuries from J2000.0
+  - L0: mean longitude
+  - M: mean anomaly
+  - C: equation of center
+  - trueLong = L0 + C
+  - apparentLong = trueLong - 0.00569 - 0.00478*sin(omega)
+*/
+function solarLongitudeApprox(jd, mode){
+  const T = (jd - 2451545.0)/36525.0;
+
+  let L0 = 280.46646 + 36000.76983*T + 0.0003032*T*T;
+  L0 = clamp360(L0);
+
+  let M = 357.52911 + 35999.05029*T - 0.0001537*T*T;
+  M = clamp360(M);
+
+  const Mr = deg2rad(M);
+  const C = (1.914602 - 0.004817*T - 0.000014*T*T)*Math.sin(Mr)
+          + (0.019993 - 0.000101*T)*Math.sin(2*Mr)
+          + 0.000289*Math.sin(3*Mr);
+
+  let trueLong = L0 + C;
+  trueLong = clamp360(trueLong);
+
+  // omega: longitude of ascending node of Moon's mean orbit
+  const omega = 125.04 - 1934.136*T;
+  const apparentLong = clamp360(trueLong - 0.00569 - 0.00478*Math.sin(deg2rad(omega)));
+
+  return {
+    T, L0, M, C,
+    trueLong,
+    apparentLong: apparentLong,
+    lon: (mode==="true") ? trueLong : apparentLong
+  };
+}
+
+/* ===================== 절기/월지 계산 ===================== */
+function termIndexFromLon(lon){
+  // 입춘 시작을 315°로 두고 15° 간격
+  const x = clamp360(lon - 315);
+  return Math.floor(x / 15); // 0..23
+}
+
+function termStartLon(idx){
+  return clamp360(315 + idx*15);
+}
+function termEndLon(idx){
+  return clamp360(315 + (idx+1)*15);
+}
+
+function monthBranchFromTermIndex(idx){
+  // 절기월은 “절기 2개(30°)당 1개월”로도 쓰지만,
+  // 여기서는 “입춘~”의 12개월을 30° 단위로 매핑:
+  // idx 0~1 → 인월, 2~3 → 묘월, ...
+  const mi = Math.floor(idx/2); // 0..11
+  return monthBranchOrder[mi];
+}
+
+/* ===================== 시지 계산 ===================== */
+function hourBranchFromKST(timeStr){
+  const [h,m] = timeStr.split(":").map(Number);
+  const minutes = h*60 + m;
+
+  // 자시: 23:00~00:59
+  // 축시: 01:00~02:59 ...
+  // 해시: 21:00~22:59
+  const ranges = [
+    {b:"자", s:23*60, e:24*60+59},
+    {b:"축", s:1*60, e:2*60+59},
+    {b:"인", s:3*60, e:4*60+59},
+    {b:"묘", s:5*60, e:6*60+59},
+    {b:"진", s:7*60, e:8*60+59},
+    {b:"사", s:9*60, e:10*60+59},
+    {b:"오", s:11*60, e:12*60+59},
+    {b:"미", s:13*60, e:14*60+59},
+    {b:"신", s:15*60, e:16*60+59},
+    {b:"유", s:17*60, e:18*60+59},
+    {b:"술", s:19*60, e:20*60+59},
+    {b:"해", s:21*60, e:22*60+59},
+  ];
+
+  // 처리: 23:00~23:59는 다음날 범위로 계산하기 위해 minutes를 24h 이상으로
+  if(minutes >= 23*60){
+    const mm = minutes + 24*60;
+    return ranges.find(r => mm>=r.s && mm<=r.e).b;
+  }
+  return ranges.find(r => minutes>=r.s && minutes<=r.e).b;
+}
+
+/* ===================== 4주(연월일시) 계산 ===================== */
+
+// (A) 연주: 입춘(315°) 기준 절기년
+function solarYearByIpchun(lon, dateStr){
+  const [Y] = dateStr.split("-").map(Number);
+  return (lon >= 315) ? Y : (Y - 1);
+}
+function yearPillarFromSolarYear(solarYear){
+  const baseYear = 1984; // 갑자년
+  const diff = solarYear - baseYear;
+  const si = ((diff % 10) + 10) % 10;
+  const bi = ((diff % 12) + 12) % 12;
+  return { stemIndex: si, branchIndex: bi, stem: stems[si], branch: branches[bi] };
+}
+
+// (B) 일주: “전통 만세력과 정합(캘리브레이션)” 오프셋 고정
+// 기준점(검증): 2025-01-09(낮 시간) = 무인(戊寅) → 오프셋 도출
+// v4 고정값:
+const DAY_STEM_OFFSET = 9;  // (JDN + 9) % 10
+const DAY_BRANCH_OFFSET = 1; // (JDN + 1) % 12
+
+function jdnFromUTCDate(d){
+  // JDN = floor(JD + 0.5)
+  const jd = julianDayFromDateUTC(d);
+  return Math.floor(jd + 0.5);
+}
+
+function dayPillarFromEffectiveUTCDate(effUTC){
+  const J = jdnFromUTCDate(effUTC);
+  const si = (J + DAY_STEM_OFFSET) % 10;
+  const bi = (J + DAY_BRANCH_OFFSET) % 12;
+  return { stemIndex: si, branchIndex: bi, stem: stems[si], branch: branches[bi] };
+}
+
+// (C) 월주: 연간으로 寅월 월간을 정하고, 월지 순환
+function monthStemIndexFromYearStem(yearStemIndex){
+  // 寅월 월간 = (연간*2 + 2) % 10
+  return (yearStemIndex*2 + 2) % 10;
+}
+function monthPillarFromYearStemAndMonthBranch(yearStemIndex, monthBranch){
+  const mi = monthBranchOrder.indexOf(monthBranch); // 인=0 .. 축=11
+  const base = monthStemIndexFromYearStem(yearStemIndex);
+  const si = (base + mi) % 10;
+  const bi = branches.indexOf(monthBranch);
+  return { stemIndex: si, branchIndex: bi, stem: stems[si], branch: monthBranch };
+}
+
+// (D) 시주: 일간으로 子시 시간 결정 후 시지 순환
+function hourStemIndexFromDayStem(dayStemIndex){
+  // 子시 시간 = (일간*2) % 10
+  return (dayStemIndex*2) % 10;
+}
+function hourPillarFromDayStemAndHourBranch(dayStemIndex, hourBranch){
+  const hi = branches.indexOf(hourBranch); // 자=0..해=11
+  const base = hourStemIndexFromDayStem(dayStemIndex);
+  const si = (base + hi) % 10;
+  return { stemIndex: si, branchIndex: hi, stem: stems[si], branch: hourBranch };
+}
+
+/* ===================== 경계/품질 계산 ===================== */
+function boundaryDeltaMinutes(lon, idx){
+  // 단순 근사: 태양 평균 이동량 0.985647°/day
+  const degPerMin = 0.985647 / (24*60);
+  const start = termStartLon(idx);
+  const end = termStartLon(idx+1);
+
+  // 이전 경계(해당 절기 시작)로부터 경과분(+) / 이전이면(-)이 아니라, 현재 절기 내에서는 양수.
+  // 하지만 우리는 “가장 가까운 경계”를 선택해 +/- 표기.
+  const x = clamp360(lon - start); // 0~15
+  const toPrev = x / degPerMin;           // 분 (절기 시작 이후 경과)
+  const toNext = (15 - x) / degPerMin;    // 분 (다음 절기까지 남은)
+
+  if(toPrev <= toNext){
+    return { near:"이전 절기 경계 " + terms[idx], deltaMin: Math.round(-toPrev) }; // “경계로부터 경과”를 음수로 표기(이전 경계에서 얼마나 지났는지)
+  } else {
+    return { near:"다음 절기 경계 " + terms[(idx+1)%24], deltaMin: Math.round(toNext) };
+  }
+}
+
+function qualityFromDelta(deltaMin){
+  const a = Math.abs(deltaMin);
+  if(a >= 720) return {label:"높음", cls:"b-good", risk:"안정", hint:"경계 양면 해석 불필요"};
+  if(a >= 120) return {label:"주의", cls:"b-warn", risk:"근접", hint:"경계 영향 가능(보조 해석 권장)"};
+  return {label:"경계", cls:"b-bad", risk:"경계", hint:"절기/월지 분기(양면 해석) 권장"};
+}
+
+/* ===================== 버튼/출력 ===================== */
+function calc(){
+  const dateStr = document.getElementById("date").value;
+  const timeStr = document.getElementById("time").value;
+  const mode = document.getElementById("mode").value;
+  const dayRule = document.getElementById("dayRule").value;
+  const lonE = parseFloat(document.getElementById("lonE").value || "126.9780");
+
+  if(!dateStr || !timeStr){
+    alert("날짜와 시각을 입력하세요.");
+    return;
+  }
+
+  // UTC 변환
+  const {utcDate, utcIso} = dateTimeKSTToUTCISO(dateStr, timeStr);
+  const jd = julianDayFromDateUTC(utcDate);
+
+  // 태양 황경 계산
+  const sol = solarLongitudeApprox(jd, mode);
+  const lon = sol.lon;
+
+  // 절기/월지
+  const tIdx = termIndexFromLon(lon);
+  const term = terms[tIdx];
+  const boundary = `${terms[tIdx]} → ${terms[(tIdx+1)%24]}`;
+  const monthB = monthBranchFromTermIndex(tIdx);
+  const hourB = hourBranchFromKST(timeStr);
+
+  // 경계 델타/품질
+  const b = boundaryDeltaMinutes(lon, tIdx);
+  const q = qualityFromDelta(b.deltaMin);
+
+  // 4주(연월일시)
+  const solarYear = solarYearByIpchun(lon, dateStr);
+  const yP = yearPillarFromSolarYear(solarYear);
+
+  const effUTC = effectiveDateForDayPillar(dateStr, timeStr, dayRule);
+  const dP = dayPillarFromEffectiveUTCDate(effUTC);
+
+  const mP = monthPillarFromYearStemAndMonthBranch(yP.stemIndex, monthB);
+  const hP = hourPillarFromDayStemAndHourBranch(dP.stemIndex, hourB);
+
+  // 한자 표기
+  function hzStem(si){ return hanjaStems[si]; }
+  function hzBranch(bi){ return hanjaBranches[bi]; }
+  function pillarText(p){ return `${p.stem}${p.branch} (${hzStem(p.stemIndex)}${hzBranch(p.branchIndex)})`; }
+  function branchText(b){ 
+    const bi = branches.indexOf(b);
+    return `${b} (${hanjaBranches[bi]})`;
+  }
+
+  // 화면 출력
+  document.getElementById("out_kst").textContent = `${dateStr} ${timeStr}`;
+  document.getElementById("out_utc").textContent = utcIso + " (UTC)";
+  document.getElementById("out_mode").textContent = (mode==="true") ? "진태양(근사)" : "겉보기 태양(근사)";
+
+  document.getElementById("out_lon").textContent = `${lon.toFixed(6)}°`;
+  document.getElementById("out_term").textContent = `${term} (${englishTerm(term)})`;
+  document.getElementById("out_boundary").textContent = boundary;
+
+  document.getElementById("out_near").textContent = b.near;
+  document.getElementById("out_delta").textContent = `${b.deltaMin}분 (${deltaExplain(b.deltaMin)})`;
+  document.getElementById("out_quality").innerHTML = `${q.label} <span class="badge ${q.cls}">${q.risk}</span><div class="mini">${q.hint}</div>`;
+
+  document.getElementById("out_monthB").textContent = branchText(monthB);
+  document.getElementById("out_hourB").textContent = branchText(hourB);
+
+  document.getElementById("out_yearP").textContent = pillarText(yP);
+  document.getElementById("out_monthP").textContent = pillarText(mP);
+  document.getElementById("out_dayP").textContent = pillarText(dP);
+  document.getElementById("out_hourP").textContent = pillarText(hP);
+
+  document.getElementById("pillars").textContent =
+    `${yP.stem}${yP.branch} / ${mP.stem}${mP.branch} / ${dP.stem}${dP.branch} / ${hP.stem}${hP.branch}`;
+
+  // GPT용 출력(한글)
+  const effKey = `${effUTC.getUTCFullYear()}-${pad2(effUTC.getUTCMonth()+1)}-${pad2(effUTC.getUTCDate())}`;
+  const raw =
+`[Sky Chronos v4 — 태양황경 기반 천문·절기·만세력 계산]
+
+[SC-PACK v1]
+입력_한국시간=${dateStr} ${timeStr}
+세계시_UTC=${utcIso}
+계산모드=${(mode==="true")?"진태양(근사)":"겉보기 태양(근사)"}
+태양황경_deg=${lon.toFixed(6)}
+절기=${term}
+절기경계=${boundary}
+절기월=${monthB}
+시지=${hourB}
+가장가까운경계=${b.near}
+경계까지_분=${b.deltaMin}
+신뢰등급=${q.label}
+경계위험=${q.risk}
+일주기준=${(dayRule==="civil")?"0시 기준":"자정교자(23시 이후 다음날)"}
+효력일(일주계산용)=${effKey}
+경도E=${lonE.toFixed(4)}
+[/SC-PACK]
+
+[천문 계산 요약]
+입력(한국시간): ${dateStr} ${timeStr}
+세계시(UTC): ${utcIso}
+계산 모드: ${(mode==="true")?"진태양(근사)":"겉보기 태양(근사)"}
+태양 황경: ${lon.toFixed(6)}°
+절기: ${term}
+절기 경계: ${boundary}
+가장 가까운 절기 경계: ${b.near}
+경계까지 시간 차: ${b.deltaMin}분 (${deltaExplain(b.deltaMin)})
+신뢰 등급: ${q.label} (${q.risk}) — ${q.hint}
+
+[만세력 4주(연·월·일·시)]
+연주(입춘 기준): ${yP.stem}${yP.branch} (${hzStem(yP.stemIndex)}${hzBranch(yP.branchIndex)})
+월주(절기월): ${mP.stem}${mP.branch} (${hzStem(mP.stemIndex)}${hzBranch(mP.branchIndex)})
+일주(${(dayRule==="civil")?"0시 기준":"자정교자"}): ${dP.stem}${dP.branch} (${hzStem(dP.stemIndex)}${hzBranch(dP.branchIndex)})
+시주: ${hP.stem}${hP.branch} (${hzStem(hP.stemIndex)}${hzBranch(hP.branchIndex)})
+
+[한계 고지(필수)]
+이 출력은 ‘절기(태양황경) + 절기월 + 4주 계산(전통 규칙/옵션 적용)’에 기반한 계산 결과입니다.
+해석(격국/용신/대운/길흉 단정)은 별도의 명리 체계·정의·추가 정보가 필요합니다.
+`;
+  document.getElementById("raw").textContent = raw;
+}
+
+function englishTerm(k){
+  // 아주 짧은 병기(원하면 빼도 됨). “결과에서 영어를 다 한글로” 요청에 맞춰 사실상 장식 수준.
+  // 완전 제거하려면 아래 return ""로 바꿔도 됨.
+  const map = {
+    "입춘":"Beginning of Spring","우수":"Rain Water","경칩":"Awakening of Insects","춘분":"Vernal Equinox","청명":"Pure Brightness","곡우":"Grain Rain",
+    "입하":"Beginning of Summer","소만":"Grain Full","망종":"Grain in Ear","하지":"Summer Solstice","소서":"Minor Heat","대서":"Major Heat",
+    "입추":"Beginning of Autumn","처서":"Limit of Heat","백로":"White Dew","추분":"Autumnal Equinox","한로":"Cold Dew","상강":"Frost's Descent",
+    "입동":"Beginning of Winter","소설":"Minor Snow","대설":"Major Snow","동지":"Winter Solstice","소한":"Minor Cold","대한":"Major Cold"
+  };
+  return map[k] ? map[k] : "";
+}
+
+function deltaExplain(deltaMin){
+  if(deltaMin===0) return "절기 경계와 동일";
+  if(deltaMin<0){
+    const h = Math.round(Math.abs(deltaMin)/60);
+    return `경계 이후 약 ${h}시간 경과`;
+  } else {
+    const h = Math.round(deltaMin/60);
+    return `경계까지 약 ${h}시간 남음`;
+  }
+}
+
+function copyGPT(){
+  const text = document.getElementById("raw").textContent;
+  if(!text || text.trim()==="—"){
+    alert("먼저 ‘NASA 기준 계산’을 실행하세요.");
+    return;
+  }
+  navigator.clipboard.writeText(text).then(()=>{
+    alert("복사 완료! GPT에 붙여넣기 하세요.");
+  }).catch(()=>{
+    alert("복사 실패: 브라우저 권한을 확인하세요.");
+  });
+}
+
+function openGPT(){
+  const text = document.getElementById("raw").textContent;
+  if(!text || text.trim()==="—"){
+    alert("먼저 ‘NASA 기준 계산’을 실행하세요.");
+    return;
+  }
+  navigator.clipboard.writeText(text).catch(()=>{});
+  // TODO: 당신의 GPT 링크로 교체
+  const url = "https://chat.openai.com/";
+  window.open(url, "_blank");
+  alert("계산 결과가 복사되었습니다.\nGPT 창이 열리면 그대로 붙여넣기 하세요.");
+}
+
+// 첫 로드 시 한번 계산
+calc();
+</script>
+</body>
+</html>
