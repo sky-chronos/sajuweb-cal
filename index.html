@@ -12,6 +12,7 @@
       line-height: 1.6;
       background: #fafafa;
     }
+
     h1 { margin-top: 0; }
     h3 { margin-bottom: 8px; }
 
@@ -96,6 +97,64 @@
       font-size: 12px;
       color: #666;
       text-align: center;
+    }
+
+    /* =========================
+       Mobile UI 개선 (≤ 768px)
+    ========================= */
+    @media (max-width: 768px) {
+
+      body {
+        margin: 12px;
+      }
+
+      .card {
+        padding: 16px;
+        border-radius: 12px;
+      }
+
+      h1 {
+        font-size: 20px;
+      }
+
+      h3 {
+        font-size: 16px;
+        margin-top: 18px;
+      }
+
+      .row {
+        gap: 8px;
+      }
+
+      /* 입력 요소 세로 정렬 */
+      .row label {
+        width: 100%;
+      }
+
+      input, select {
+        width: 100%;
+        font-size: 16px; /* 모바일 키보드 확대 방지 */
+      }
+
+      button {
+        width: 100%;
+        font-size: 16px;
+        padding: 12px;
+      }
+
+      .actions {
+        flex-direction: column;
+      }
+
+      pre {
+        font-size: 13px;
+        padding: 14px;
+      }
+
+      footer {
+        padding: 0 12px;
+        font-size: 11px;
+      }
     }
   </style>
 </head>
