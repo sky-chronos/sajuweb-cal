@@ -1,9 +1,11 @@
 /* =========================================================
-   app.js – STEP 4-2(A) + STEP 4-3 최종 통합본
+   app.js – STEP 4-4 (대운·세운·월운 자동 계산)
+   기존:
    - KASI 음력 → 양력
-   - 사주 4주 계산
-   - 4주 전역 저장 (__LAST_PILLARS__)
-   - 보조 메모(십성·오행·신강·용신) 생성
+   - 사주 4주
+   - 보조 메모
+   추가:
+   - 대운 / 세운 / 월운
 ========================================================= */
 
 function $(id){ return document.getElementById(id); }
@@ -57,75 +59,43 @@ const HIDDEN={
   "유":["신"],"술":["무","신","정"],"해":["임","갑"]
 };
 
-/* ================= STEP 4-2 : 사주 4주 계산 ================= */
-
-/* 연주 (입춘 간이판: 2/4 이전이면 전년도) */
+/* ================= 사주 4주 ================= */
 function yearPillar(y,m,d){
   const useYear = (m<2 || (m===2 && d<4)) ? y-1 : y;
-  return {
-    stem: STEMS[mod(useYear-4,10)],
-    branch: BRANCHES[mod(useYear-4,12)]
-  };
+  return { stem: STEMS[mod(useYear-4,10)], branch: BRANCHES[mod(useYear-4,12)] };
 }
-
-/* 월주 (간이 절기판: 양력 월 기준) */
 function monthPillar(y,m){
-  return {
-    stem: STEMS[mod(y*12+m,10)],
-    branch: BRANCHES[mod(m+1,12)]
-  };
+  return { stem: STEMS[mod(y*12+m,10)], branch: BRANCHES[mod(m+1,12)] };
 }
-
-/* 일주 (1900-01-01 기준) */
 function dayPillar(y,m,d){
   const base=new Date(1900,0,1);
   const cur=new Date(y,m-1,d);
   const diff=Math.floor((cur-base)/86400000);
-  return {
-    stem: STEMS[mod(diff,10)],
-    branch: BRANCHES[mod(diff,12)]
-  };
+  return { stem: STEMS[mod(diff,10)], branch: BRANCHES[mod(diff,12)] };
 }
-
-/* 시주 */
 function hourPillar(dayStem,hour){
   const br=Math.floor((hour+1)/2)%12;
   const st=mod(STEMS.indexOf(dayStem)*2+br,10);
-  return {stem:STEMS[st], branch:BRANCHES[br]};
+  return { stem: STEMS[st], branch: BRANCHES[br] };
 }
 
-/* ================= STEP 4-3 : 보조 메모 ================= */
-function tenGod(day, target){
-  const d=STEM_INFO[day], t=STEM_INFO[target];
-  const sameYY=d.yy===t.yy;
-  if(d.el===t.el) return sameYY?"비견":"겁재";
-  if(GEN[d.el]===t.el) return sameYY?"식신":"상관";
-  if(CON[d.el]===t.el) return sameYY?"편재":"정재";
-  if(CON[t.el]===d.el) return sameYY?"칠살":"정관";
-  if(GEN[t.el]===d.el) return sameYY?"편인":"정인";
-  return "-";
-}
-
+/* ================= 보조 메모 ================= */
 function fiveCounts(p){
   const c={목:0,화:0,토:0,금:0,수:0};
   ["year","month","day","hour"].forEach(k=>{
     c[STEM_INFO[p[k].stem].el]++;
-    HIDDEN[p[k].branch].forEach(s=>{
-      c[STEM_INFO[s].el]++;
-    });
+    HIDDEN[p[k].branch].forEach(s=>c[STEM_INFO[s].el]++);
   });
   return c;
 }
-
 function strength(dayStem, counts){
   const el=STEM_INFO[dayStem].el;
-  const support=counts[el]+counts[GEN[el]];
-  const total=Object.values(counts).reduce((a,b)=>a+b,0);
-  if(support*2>=total+2) return "신강";
-  if(support*2<=total-2) return "신약";
+  const sup=counts[el]+counts[GEN[el]];
+  const tot=Object.values(counts).reduce((a,b)=>a+b,0);
+  if(sup*2>=tot+2) return "신강";
+  if(sup*2<=tot-2) return "신약";
   return "중간";
 }
-
 function yongshin(dayStem, str){
   const el=STEM_INFO[dayStem].el;
   if(str==="신강") return {p:GEN[el], s:CON[el]};
@@ -133,12 +103,34 @@ function yongshin(dayStem, str){
   return {p:el, s:GEN[el]};
 }
 
+/* ================= STEP 4-4 핵심 ================= */
+function buildLuckText(pillars, solarYear){
+  const baseStemIdx = STEMS.indexOf(pillars.month.stem);
+  const baseBranchIdx = BRANCHES.indexOf(pillars.month.branch);
+
+  let daewoon = "[대운]\n";
+  for(let i=1;i<=6;i++){
+    const s = STEMS[mod(baseStemIdx+i,10)];
+    const b = BRANCHES[mod(baseBranchIdx+i,12)];
+    daewoon += `- ${i*10}세: ${s}${b}\n`;
+  }
+
+  let sewoon = "\n[세운(연운)]\n";
+  for(let y=solarYear-3; y<=solarYear+3; y++){
+    sewoon += `- ${y}: ${STEMS[mod(y-4,10)]}${BRANCHES[mod(y-4,12)]}\n`;
+  }
+
+  let wolwoon = "\n[월운]\n";
+  for(let m=1;m<=12;m++){
+    wolwoon += `- ${m}월: ${STEMS[mod(solarYear*12+m,10)]}${BRANCHES[mod(m+1,12)]}\n`;
+  }
+
+  return daewoon + sewoon + wolwoon;
+}
+
 /* ================= 실행 ================= */
 function onCalc(){
-  $("err").textContent="";
-  $("msg").textContent="";
-  $("debug").textContent="";
-
+  $("err").textContent=""; $("msg").textContent=""; $("debug").textContent="";
   try{
     const calType=getCalendarType();
     const engine=$("lunarEngine").value;
@@ -157,32 +149,23 @@ function onCalc(){
         : lunarToSolar_UniversalBlocked();
     }
 
-    /* 4주 계산 */
     const pillars={
       year: yearPillar(solar.year,solar.month,solar.day),
       month: monthPillar(solar.year,solar.month),
       day: dayPillar(solar.year,solar.month,solar.day),
-      hour: hourPillar(
-        dayPillar(solar.year,solar.month,solar.day).stem,
-        hh
-      )
+      hour: hourPillar(dayPillar(solar.year,solar.month,solar.day).stem, hh)
     };
 
-    /* 🔑 STEP 4-3을 위한 전역 저장 */
-    window.__LAST_PILLARS__ = pillars;
-
-    /* 보조 메모 */
-    const dayStem=pillars.day.stem;
     const counts=fiveCounts(pillars);
-    const str=strength(dayStem,counts);
-    const ys=yongshin(dayStem,str);
+    const str=strength(pillars.day.stem, counts);
+    const ys=yongshin(pillars.day.stem, str);
+    const luckText = buildLuckText(pillars, solar.year);
 
-    const memo =
-`[사주 계산 결과 - 사주도사 웹계산기]
+    const out =
+`[사주도사 웹계산 결과 – STEP 4-4]
 
 [출생 정보]
 - 양력: ${solar.year}-${pad2(solar.month)}-${pad2(solar.day)} ${pad2(hh)}:${pad2(mm)} (KST)
-- 음력 변환 기준: KASI(한국천문연구원)
 
 [사주 팔자]
 - 년주: ${pillars.year.stem}${pillars.year.branch}
@@ -196,11 +179,13 @@ function onCalc(){
 - 신강/신약: ${str}
 - 용신 후보: 1순위 ${ys.p}, 2순위 ${ys.s}
 
+${luckText}
+
 ※ GPT(사주도사)는 위 계산 결과를 변경하지 말고 해석만 수행하세요.
 `;
 
-    $("msg").textContent = `사주 계산 완료 → ${solar.year}-${pad2(solar.month)}-${pad2(solar.day)}`;
-    $("debug").textContent = memo;
+    $("msg").textContent = `STEP 4-4 완료 → 대운·세운·월운 계산됨`;
+    $("debug").textContent = out;
 
   }catch(e){
     $("err").textContent=e.message;
