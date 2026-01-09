@@ -3,18 +3,22 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>사주도사 – STEP 4</title>
+  <title>사주도사 – 무료 사주 계산기</title>
 
   <style>
     body {
       font-family: system-ui, -apple-system, "Noto Sans KR", sans-serif;
       margin: 24px;
       line-height: 1.6;
+      background: #fafafa;
     }
     h1 { margin-top: 0; }
+    h3 { margin-bottom: 8px; }
 
     .card {
-      max-width: 960px;
+      max-width: 980px;
+      margin: auto;
+      background: #fff;
       border: 1px solid #ddd;
       border-radius: 16px;
       padding: 24px;
@@ -51,7 +55,7 @@
       display: inline-block;
       padding: 4px 10px;
       border-radius: 999px;
-      background: #f2f2f2;
+      background: #eee;
       font-size: 12px;
       margin-left: 8px;
     }
@@ -70,23 +74,39 @@
     }
 
     pre {
-      background: #fafafa;
+      background: #f9f9f9;
       border: 1px solid #eee;
       border-radius: 12px;
       padding: 16px;
       margin-top: 12px;
       white-space: pre-wrap;
+      font-size: 14px;
+    }
+
+    .actions {
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+      margin-top: 12px;
+    }
+
+    footer {
+      max-width: 980px;
+      margin: 24px auto 0;
+      font-size: 12px;
+      color: #666;
+      text-align: center;
     }
   </style>
 </head>
 
 <body>
   <div class="card">
-    <h1>사주도사 – STEP 4</h1>
+    <h1>사주도사 – STEP 4-4 (무료)</h1>
 
     <p>
       음력/윤달 입력 → <b>KASI 기준 양력 확정</b> →
-      <b>사주 4주 + 보조 메모 자동 생성</b>
+      <b>사주 · 대운 · 세운 · 월운 자동 계산</b>
     </p>
 
     <h3>달력 선택</h3>
@@ -99,7 +119,6 @@
         <input type="radio" name="calendarType" value="lunar" />
         음력
       </label>
-
       <span class="badge" id="engineBadge">엔진: 범용</span>
     </div>
 
@@ -134,16 +153,27 @@
       <label>분 <input id="minute" type="number" value="0"></label>
     </div>
 
-    <!-- 🔴 중요: submit 아님 -->
     <button id="btnCalc" type="button">계산 실행</button>
 
     <h3>결과</h3>
     <div id="msg" class="ok"></div>
     <div id="err" class="err"></div>
     <pre id="debug"></pre>
+
+    <div class="actions">
+      <button id="btnCopy" type="button">📋 결과 복사</button>
+      <button id="btnCopyGPT" type="button">🤖 GPT용 복사</button>
+      <button onclick="window.print()">🖨️ PDF 저장</button>
+    </div>
   </div>
 
-  <!-- ⚠️ 반드시 이 순서 -->
+  <footer>
+    계산 기준: KASI(한국천문연구원) 음력 변환 · KST 기준 ·
+    입춘/절기 기준 사주 · 대운/세운/월운 자동 계산<br>
+    본 도구는 참고용이며, 선택과 판단의 책임은 사용자에게 있습니다.
+  </footer>
+
+  <!-- 반드시 이 순서 -->
   <script src="./vendor/korean-lunar-calendar.min.js"></script>
   <script src="./app.js"></script>
 </body>
